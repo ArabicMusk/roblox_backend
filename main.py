@@ -8,7 +8,7 @@ app = FastAPI()
 # We look for the API key in the server settings
 HF_TOKEN = os.getenv("HF_TOKEN")
 # Using the high-quality BART model hosted on Hugging Face's free servers
-API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
+API_URL = "https://api-inference.huggingface.co/pipeline/zero-shot-classification/facebook/bart-large-mnli"
 
 GAME_SECTORS = ["Technology", "Retail & Shopping", "Food & Hospitality", "Service & Labor"]
 
