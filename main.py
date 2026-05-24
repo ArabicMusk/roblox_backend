@@ -1,30 +1,44 @@
+import os
+import requests
 from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import pipeline
 
 app = FastAPI()
 
-# Upgrade to a zero-shot classifier (Still fits on free tiers, but can categorize anything)
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+# We look for the API key in the server settings
+HF_TOKEN = os.getenv("HF_TOKEN")
+# Using the high-quality BART model hosted on Hugging Face's free servers
+API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-mnli"
 
-# Define the business categories you want your Roblox game to use
 GAME_SECTORS = ["Technology", "Retail & Shopping", "Food & Hospitality", "Service & Labor"]
 
 class IdeaRequest(BaseModel):
     text: str
 
+@app.get("/")
+def health_check():
+    return {"status": "healthy"}
+
 @app.post("/classify")
 def classify_idea(request: IdeaRequest):
-    # The AI evaluates the text against your specific game sectors
-    model_output = classifier(request.text, candidate_labels=GAME_SECTORS)
-    
-    # Extract the top matched category and the confidence score
-    top_label = model_output["labels"][0]
-    confidence_score = model_output["scores"][0]
-    
-    return {
-        "status": "success",
-        "category": top_label,
-        "confidence": round(confidence_score * 100, 2) # e.g., 94.5%
-    }
+    if not HF_TOKEN:
+        return {"status": "error", "message": "Missing HF_TOKEN environment variable on Render."}
 
+    payload = {
+        "inputs": request.text,
+        "parameters": {"candidate_labels": GAME_SECTORS}
+    }
+    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload)
+        output = response.json()
+        
+        # Format the data cleanly for Roblox
+        return {
+            "status": "success",
+            "category": output["labels"][0],
+            "confidence": round(output["scores"][0] * 100, 2)
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
